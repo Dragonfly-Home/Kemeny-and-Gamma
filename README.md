@@ -4,11 +4,13 @@ MATLAB implementation of a gamma/feedback method for computing Kemeny's constant
 with reproducible comparisons against Direct, Bini-Rec, Bini-DirRec, and Du.
 The proposed implementation is named **New-full-rhs** in the benchmark output.
 
-The default configuration reproduces the experiment plan of HPC job `20372192`:
-24 datasets, six partition counts (`4, 6, 8, 10, 12, 14`) for Du and New,
-one full warm-up and one measured call for each enabled algorithm/partition group.
-There are **360 measured calls and 360 warm-up calls**.
-This full batch took about **19 hours 23 minutes** on the reference system.
+The default configuration runs the **11 datasets** included in `matrix/`:
+`as-22july06`, `big`, `ca-CondMat`, `ca-HepPh`, `cond-mat-2003`, `cs4`,
+`de2010`, `gre_1107`, `hi2010`, `vsp_c-30_data_data`, and `worms20_10NN`.
+Direct, Bini-Rec, and Bini-DirRec each run once per dataset. Du and New each
+run once at each partition count `k = 4, 6, 8, 10, 12, 14`.
+Every enabled algorithm/partition group first receives one full warm-up call,
+giving **165 measured calls and 165 warm-up calls** in total.
 Start with the small example below before running the complete batch.
 
 ## Requirements
@@ -35,7 +37,7 @@ Run a small example with two workers and all five methods:
 
 ```matlab
 results = run_kemeny('Tests', {
-    'minnesota', 1, 1, 1, [4, 1], [4, 1]
+    'gre_1107', 1, 1, 1, [4, 1], [4, 1]
 }, 'Workers', 2);
 ```
 
@@ -46,7 +48,7 @@ two workers. A partition count is not the same thing as the worker count.
 Run the full configured experiment only when sufficient time and memory are available:
 
 ```matlab
-[results, summary] = run_kemeny;
+[results, configuration, summary] = run_kemeny;
 ```
 
 Each invocation writes to a fresh directory under `runs/`. To choose a directory,
@@ -55,12 +57,14 @@ result files. Existing results are not automatically resumed after interruption.
 
 ## Configure datasets, partitions, and repetitions
 
-Edit `TEST_CASES` at the start of `run_kemeny.m`. Each row has six columns:
+Edit `TEST_CASES` at the start of `run_kemeny.m`. Each row has six columns.
+The following example illustrates different repeat counts; the default plan
+described above uses one measured call per enabled group:
 
 ```matlab
 TEST_CASES = {
-    'cage10',    3, 4, 4, [[4, 1], [6, 2], [8, 2]], [[8, 2], [4, 3]];
-    'minnesota', 3, 4, 4, [[4, 1], [6, 2], [8, 2]], [[8, 2], [4, 3]];
+    'big',      3, 4, 4, [[4, 1], [6, 2], [8, 2]], [[8, 2], [4, 3]];
+    'gre_1107', 3, 4, 4, [[4, 1], [6, 2], [8, 2]], [[8, 2], [4, 3]];
 };
 ```
 
@@ -76,6 +80,11 @@ TEST_CASES = {
 MATLAB concatenates `[[4,1],[6,2]]` into `[4 1 6 2]`; the runner explicitly
 parses adjacent numbers as pairs. The equivalent two-column form
 `[4,1; 6,2]` and the single-group form `[4,1]` are also accepted.
+The dataset basename must match a MAT file present in `matrix/`. If you remove
+a dataset, remove its configuration row as well. After editing, use
+`run_kemeny('PlanOnly', true)` to inspect the expanded groups and repeat counts.
+Plan-only mode does not check whether the matrix files exist.
+
 Groups run in their listed order. Repeated values of `k` remain separate groups
 identified by `PlanIndex`. A repeat count of zero skips that group and its warm-up.
 
@@ -154,33 +163,41 @@ scheduler before submitting. Other clusters require adjustments to the directive
 and MATLAB module command. The example deliberately rejects a runtime account or
 partition different from its configured CSU free settings.
 
-The public script requests 24 hours because the recorded complete experiment took
-19 hours 23 minutes. The downloaded historical submission script contained an
-8-hour directive, which does not explain the actual completed duration; its
-effective scheduler time limit was not recorded in the supplied evidence.
-Do not treat either directive as a verified cluster maximum.
+To change the requested time limit, edit `#SBATCH --time=24:00:00` in
+`submit_free.sh` (Slurm format: `hours:minutes:seconds`, or
+`days-hours:minutes:seconds`). If a web portal supplies the resource settings,
+check the effective request there as well. The retained 24-hour value is an
+example request, not a measured runtime for this reduced batch or a verified
+partition maximum. Allow time for warm-ups and preprocessing in addition to
+the measured algorithm calls.
 
 On HPC, the script snapshots the MATLAB sources and matrices into `runs/free-JOBID`
 when the job starts. Keep the source configuration unchanged while a job is queued.
 Fresh generated logs, MATLAB preferences, certificates, and worker caches must
 remain local and are excluded from this publication tree.
 
-## Reference experiment
+## Benchmark provenance
 
-[Reference results](reference_results/20372192/README.md) contain the numerical
-outputs of job `20372192`, including the full-precision measured checkpoints.
-The reference hardware was a CSU compute node with two Intel Xeon Gold 6248R
-processors (24 cores per processor, nominal frequency 3.00 GHz).
-The job allocation was 15 CPU cores and 100 GiB of memory, with 14 single-threaded
-MATLAB workers. Allocated memory is not the node's total physical memory.
+The numerical implementations and the 11 included MAT files are unchanged from
+the previously checked publication source derived from HPC job `20372192`.
+The default configuration now selects an **11-dataset subset** of that job's
+24-dataset plan; partition counts and repeat counts for the retained rows are
+unchanged. This is not the complete historical experiment configuration.
+Historical output files are not included in this source distribution. Running
+the current configuration generates new results under `runs/`; the previous
+full-batch runtime must not be used as the runtime of this reduced batch.
 
-Before publication cleanup, the runner, both `src/` files, all vendored baseline
-files, and all 25 matrix files matched the saved job snapshot byte for byte.
-Publication cleanup changes only whole-line comments/blank lines in first-party
-MATLAB files; executable lines and the default experiment plan are unchanged.
-The Slurm wrapper is generalized as described above. The supplied tests were not
-part of that HPC job; they are independent release checks.
-See [provenance.json](reference_results/20372192/provenance.json) for source and data hashes.
+The historical experiment used MATLAB **9.11.0.1769968 (R2021b)** on a CSU
+compute node with two Intel Xeon Gold 6248R processors (24 cores per processor,
+nominal frequency 3.00 GHz). Its allocation was 15 CPU cores and 100 GiB of
+memory, with 14 single-threaded MATLAB workers. Allocated memory is not the
+node's total physical memory; a future job may run on different hardware.
+
+Publication cleanup only changed whole-line comments and blank lines in
+first-party MATLAB implementations; the current revision additionally removes
+dataset configuration rows. The Slurm wrapper uses portable project paths as
+described above. The supplied small-matrix tests are independent release checks
+and were not part of the historical HPC job.
 
 ## Small correctness checks
 
@@ -207,7 +224,6 @@ src/kemeny_prepare_pool.m    optional standalone pool helper; not used by the ru
 tests/                      independent small-matrix checks
 third_party/                unmodified baselines and original licenses
 matrix/                     input matrices and dataset attribution
-reference_results/20372192/  recorded experiment outputs and provenance
 LICENSE                     MIT license for original project code/documentation
 THIRD_PARTY_NOTICES.md       baseline/data copyright and license notices
 ```

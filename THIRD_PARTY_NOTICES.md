@@ -59,17 +59,12 @@ its source content or license.
 The matrices are not licensed under this repository's MIT license.
 The [matrix provenance table](matrix/README.md) identifies each source.
 
-The SuiteSparse matrices are supplied under
+All 11 included matrices are from the SuiteSparse Matrix Collection and are supplied under
 [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/),
 as stated in the collection's
 [license and attribution guidance](https://sparse.tamu.edu/about#license).
 Their original MAT files and embedded metadata are retained. Cite the collection
 and preserve any additional matrix-specific citations in that metadata.
-
-`matrix/Pisa.mat` is reproduced unchanged from Kemeny-and-Conquer at the
-commit identified above, retaining that upstream repository's BSD 3-Clause
-license in [third_party/bini/LICENSE](third_party/bini/LICENSE). It is not
-identified here as a SuiteSparse matrix or relicensed under MIT or CC BY 4.0.
 
 The runner preprocesses data in memory when constructing a transition matrix;
 it does not overwrite the distributed MAT files.
